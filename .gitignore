@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Downloaded model weights (see DOWNLOADS.md for how to obtain these)
+codes/Blenderbot_small-90M/pytorch_model.bin
+persona_extractor/bart-large-cnn/pytorch_model.bin
+codes/metric/word2vec/glove.6B.300d.model.bin
+
+# Downloaded BART-large-CNN config/tokenizer (user downloads entire directory)
+persona_extractor/bart-large-cnn/config.json
+persona_extractor/bart-large-cnn/tokenizer.json
+persona_extractor/bart-large-cnn/vocab.json
+persona_extractor/bart-large-cnn/merges.txt
+
+# Downloaded PersonaChat dataset
+persona_extractor/data/
+
+# Persona extractor training outputs
+persona_extractor/pl_root/
+
+# Generated/processed data files (created by _reformat/process.py)
+codes/_reformat/PESConv.json
+codes/_reformat/train.txt
+codes/_reformat/valid.txt
+codes/_reformat/test.txt
+
+# Prepared/cached training data (created by prepare.py)
+codes/DATA/
+
+# GloVe source text (at repo root, used to generate the .bin)
+glove.6B.300d.txt
+
+# METEOR metric data
+codes/metric/pycocoevalcap/meteor/data/paraphrase-en.gz
+
+# SimCSE model (if downloaded locally)
+codes/princeton-nlp-sup-simcse-roberta-large/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+*.swo
