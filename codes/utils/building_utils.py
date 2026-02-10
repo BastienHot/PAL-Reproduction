@@ -3,12 +3,16 @@
 import json
 import os
 import logging
+import warnings
 import torch
 from os.path import join
 
 from models import models
 from transformers import (AutoTokenizer, AutoModel, AutoConfig)
 from torch.distributed import get_rank
+
+# Suppress FutureWarning from transformers' internal torch.load(weights_only=False)
+warnings.filterwarnings("ignore", message=".*weights_only.*", category=FutureWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +58,6 @@ def build_model(only_toker=False, checkpoint=None, local_rank=-1, **kwargs):
         if local_rank == -1 or get_rank() == 0:
             logger.info('loading finetuned model from %s' % checkpoint)
         model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu')))
-        # print(model.state_dict().keys())
     
     return toker, model
 
@@ -63,7 +66,7 @@ def load_model(model, checkpoint, local_rank=-1):
     if checkpoint is not None and checkpoint.lower() != "none":
         if not os.path.exists(checkpoint):
             raise ValueError('checkpoint %s not exist' % checkpoint)
-        model_state_dict = torch.load(checkpoint)
+        model_state_dict = torch.load(checkpoint, map_location=torch.device('cpu'))
         
         model_state_dict = fix_state_dict_namespace(model_state_dict, local_rank)
         if local_rank == -1 or get_rank() == 0:

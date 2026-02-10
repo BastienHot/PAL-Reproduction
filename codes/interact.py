@@ -104,7 +104,6 @@ toker, model, *_ = build_model(checkpoint=args.load_checkpoint, **names)
 model = deploy_model(model, args)
 
 model.eval()
-print(inputters)
 inputter = inputters[args.inputter_name](prepare_persona_ahead=args.prepare_persona_ahead,
                                          model_dir_or_name=args.persona_model_dir_or_name,
                                          model_ckpt=args.persona_ckpt)
@@ -187,7 +186,6 @@ while True:
     })
     inputs = inputter.convert_data_to_inputs(history, toker, False, inputter.model, inputter.tokenizer, **dataloader_kwargs)
     inputs = inputs[-1:]
-    print(inputs[0])
     history['persona'].append(inputs[0]['persona'])
     features = inputter.convert_inputs_to_features(inputs, toker,
                                                    prepare_persona_ahead=inputter.prepare_persona_ahead,
@@ -201,8 +199,6 @@ while True:
     
     out = generations[0].tolist()
     out = cut_seq_to_eos(out, eos)
-    # print(encoded_info)
-    # print(generations)
     text = toker.decode(out).encode('ascii', 'ignore').decode('ascii').strip()
     print("   AI: " + text)
     

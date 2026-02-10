@@ -7,14 +7,16 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str, required=True)
+parser.add_argument('--simcse_model', type=str, default='princeton-nlp/sup-simcse-bert-base-uncased',
+                    help='SimCSE model name or local path (default: auto-downloads from HuggingFace)')
 args = parser.parse_args()
 input_file = args.input_file
 with open(input_file) as f:
     data = json.load(f)
 with open(input_file) as f:
     data_p = json.load(f)
-tokenizer = AutoTokenizer.from_pretrained("princeton-nlp/sup-simcse-bert-base-uncased")
-model = AutoModel.from_pretrained("princeton-nlp/sup-simcse-bert-base-uncased")
+tokenizer = AutoTokenizer.from_pretrained(args.simcse_model)
+model = AutoModel.from_pretrained(args.simcse_model)
 sum_r = sum_g = 0
 for i in trange(len(data)):
     r = data[i]['response']

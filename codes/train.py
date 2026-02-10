@@ -367,12 +367,8 @@ while True:
             
                 print(f'{epoch+1},{global_step+1},{step+1},{tmp_loss},{tmp_ppl},{mean_loss},{mean_ppl},'
                       f'{n_token_real_all_proc},{n_token_total_all_proc},{epoch_time}', file=train_logger)
-            # print(global_step, args.valid_step)
-            if args.num_epochs is None and global_step % args.valid_step == 0:# and epoch > 0:
-                # print(1111)
+            if args.num_epochs is None and global_step % args.valid_step == 0:
                 if args.local_rank == -1 or get_rank() == 0:
-                    # only rank 0 process evaluate
-                    # print(2222)
                     torch.save(model.state_dict(), join(output_dir, f'{global_step}.bin'))
                     toker.save_vocabulary(output_dir)
                     model.config.to_json_file(join(output_dir, f'config.json'))

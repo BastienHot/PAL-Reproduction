@@ -1,9 +1,30 @@
 #!/bin/bash
 # Run inference with vanilla BlenderBot baseline
-# Original: ESConv/codes_zcj/RUN/infer_vanilla.sh (unchanged from ESConv)
+# Original: ESConv/codes_zcj/RUN/infer_vanilla.sh
+# Changes: auto-detects latest run directory
 
-# UPDATE THIS: set to your actual trained checkpoint path
-CHECKPOINT="./DATA/vanilla.vanilla/YOUR_RUN_DIR/best.bin"
+BASE_DIR="./DATA/vanilla.vanilla"
+
+# Use $1 as run dir name, otherwise pick the most recent
+if [ -n "$1" ]; then
+    RUN_DIR="${BASE_DIR}/$1"
+else
+    RUN_DIR=$(ls -dt "${BASE_DIR}"/*/  2>/dev/null | head -1)
+    if [ -z "$RUN_DIR" ]; then
+        echo "ERROR: No run directories found under ${BASE_DIR}/"
+        exit 1
+    fi
+    RUN_DIR="${RUN_DIR%/}"
+    echo "Auto-detected run directory: $(basename "$RUN_DIR")"
+fi
+
+CHECKPOINT="${RUN_DIR}/best.bin"
+if [ ! -f "$CHECKPOINT" ]; then
+    echo "ERROR: Checkpoint not found: ${CHECKPOINT}"
+    exit 1
+fi
+
+echo "Using checkpoint: ${CHECKPOINT}"
 
 CUDA_VISIBLE_DEVICES=0 python infer.py \
     --config_name vanilla \

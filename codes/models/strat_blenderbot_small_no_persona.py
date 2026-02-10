@@ -92,10 +92,6 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
 
         encoded_info = kwargs
         assert (self.training or validation) == (labels is not None)
-        # if validation:
-        #     labels[:, 0] = -100
-        #     print(labels[:, 0])
-        # TODO: i don't know if need following 5 lines
         if labels is not None:
             if decoder_input_ids is None:
                 decoder_input_ids = shift_tokens_right(
@@ -109,7 +105,6 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
         persona_change_attention = False
 
         if not persona_change_attention or persona_input_ids is None:
-            # print(input_ids, attention_mask, decoder_input_ids, encoder_outputs, (past_key_values is None))
             outputs = self.model(
                 input_ids,
                 attention_mask=attention_mask,
@@ -151,32 +146,18 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
                 output_hidden_states=output_hidden_states,
                 return_dict=return_dict,
             )
-            # print(encoder_outputs[0].size())
-            # tmp = [torch.matmul(torch.softmax(torch.matmul(i, j.t()), dim=-1), j) for i, j in zip(encoder_outputs[0], persona_encoder_outputs[0])]
-            # print(len(tmp), tmp[0].size())
-            # encoder_outputs.last_hidden_state = torch.stack(
-            #     [torch.matmul(torch.softmax(torch.matmul(i, j.t()), dim=-1), j) for i, j in
-            #      zip(encoder_outputs[0], persona_encoder_outputs[0])])
             context = torch.stack([torch.matmul(torch.softmax(torch.matmul(j, i.t()), dim=-1), i) for i, j in
                                    zip(encoder_outputs[0], persona_encoder_outputs[0])])
             persona = torch.stack([torch.matmul(torch.softmax(torch.matmul(i, j.t()), dim=-1), j) for i, j in
                                    zip(encoder_outputs[0], persona_encoder_outputs[0])])
             context = self.persona_norm(context+persona_encoder_outputs.last_hidden_state)
             persona = self.context_norm(encoder_outputs.last_hidden_state+persona)
-            # 归一化权重
+            # Normalize weights via softmax
             w1 = torch.exp(self.persona_context_w[0]) / torch.sum(torch.exp(self.persona_context_w))
             w2 = torch.exp(self.persona_context_w[1]) / torch.sum(torch.exp(self.persona_context_w))
             w3 = torch.exp(self.persona_context_w[2]) / torch.sum(torch.exp(self.persona_context_w))
             encoder_outputs.last_hidden_state = w1 * encoder_outputs.last_hidden_state + w2 * context + w3 * persona
-            # encoder_outputs.last_hidden_state = w1 * context + w2 * persona
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0]*context + self.persona_context_w[1]*persona
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0]*encoder_outputs.last_hidden_state + self.persona_context_w[1]*persona
 
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0] * persona + \
-            #                                     self.persona_context_w[1] * encoder_outputs.last_hidden_state + \
-            #                                     self.persona_context_w[2] * context
-            # print(self.persona_context_w)
-            # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
             decoder_outputs = self.model.decoder(
                 input_ids=decoder_input_ids,
                 attention_mask=decoder_attention_mask,
@@ -207,51 +188,15 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
                 )
 
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
-        # TODO: 考虑搞成两部分loss
-        # if validation:
-        #     # print(lm_logits.size(), self.toker.vocab_size)
-        #     lm_logits = lm_logits[..., :self.toker.vocab_size].contiguous()
         masked_lm_loss = None
         if labels is not None:
-            # 两部分loss相加
-            # logits_strategy = lm_logits[:, :1, -8:].contiguous()
-            # lm_logits = lm_logits[:, 1:, :len(self.toker) - 8].contiguous()
-            # strategy = labels[:, :1].contiguous()
-            # strategy = strategy - (len(self.toker)-8) * torch.ones_like(strategy, device=strategy.get_device())
-            # labels = labels[:, 1:].contiguous()
-            # print(logits_strategy.size(), strategy.size(), lm_logits.size(), labels.size())
-
-            # print(lm_logits.size(), labels.size())
             loss = F.cross_entropy(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1), reduction='none')
             loss = loss.view(labels.size(0), labels.size(1))
             label_size = torch.sum(labels.ne(-100), dim=1).type_as(loss)
-            # print("not -100: ", torch.sum(labels.ne(-100), dim=1), "equal -100: ", torch.sum(torch.logical_not(labels.ne(-100)), dim=1))
             masked_lm_loss = torch.sum(loss) / torch.sum(label_size)
             ppl_value = torch.exp(torch.mean(torch.sum(loss, dim=1).float() / label_size.float()))
-            # print(strategy, logits_strategy)
-            # strategy_loss = F.cross_entropy(logits_strategy.view(-1, logits_strategy.size(-1)), strategy.view(-1), reduction='none')
-            # strategy_loss = strategy_loss.view(strategy.size(0), strategy.size(1))
-            # print(masked_lm_loss, strategy_loss / 4)
-            # masked_lm_loss += torch.sum(strategy_loss) / strategy.size(0)
 
         if not self.training and not validation:  # inference
-            # print(input_ids, attention_mask, self.my_past, self.my_encoder_outputs)
-            # my_outputs = self.model(
-            #     input_ids,
-            #     attention_mask=attention_mask,
-            #     decoder_input_ids=decoder_input_ids,
-            #     encoder_outputs=self.my_encoder_outputs,
-            #     past_key_values=self.my_past,
-            #     use_cache=use_cache,
-            #     return_dict=return_dict,
-            # )
-            # self.my_past = my_outputs.past_key_values
-            # my_logits = self.lm_head(my_outputs[0]) + self.final_logits_bias
-            # # alpha = 0.75
-            # alpha = 0
-            # # lm_logits = my_top_k_top_p_filtering(lm_logits, top_k=10)
-            # lm_logits = (1+alpha)*lm_logits - alpha*my_logits
-
             if not return_dict:
                 output = (lm_logits,) + outputs[1:]
                 return ((masked_lm_loss,) + output) if masked_lm_loss is not None else output
@@ -335,33 +280,17 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
                 attention_mask=persona_attention_mask,
                 return_dict=return_dict,
             )
-            # encoder_outputs.last_hidden_state = torch.stack(
-            #     [torch.matmul(torch.softmax(torch.matmul(i, j.t()), dim=-1), j) for i, j in
-            #      zip(encoder_outputs[0], persona_encoder_outputs[0])])
-            # encoder_outputs.last_hidden_state = torch.stack(
-            #     [torch.matmul(torch.softmax(torch.matmul(j, i.t()), dim=-1), i) for i, j in
-            #      zip(encoder_outputs[0], persona_encoder_outputs[0])])
             context = torch.stack([torch.matmul(torch.softmax(torch.matmul(j, i.t()), dim=-1), i) for i, j in
                                    zip(encoder_outputs[0], persona_encoder_outputs[0])])
             persona = torch.stack([torch.matmul(torch.softmax(torch.matmul(i, j.t()), dim=-1), j) for i, j in
                                    zip(encoder_outputs[0], persona_encoder_outputs[0])])
             context = self.persona_norm(context + persona_encoder_outputs.last_hidden_state)
             persona = self.context_norm(encoder_outputs.last_hidden_state + persona)
-            # 归一化权重
+            # Normalize weights via softmax
             w1 = torch.exp(self.persona_context_w[0]) / torch.sum(torch.exp(self.persona_context_w))
             w2 = torch.exp(self.persona_context_w[1]) / torch.sum(torch.exp(self.persona_context_w))
             w3 = torch.exp(self.persona_context_w[2]) / torch.sum(torch.exp(self.persona_context_w))
             encoder_outputs.last_hidden_state = w1 * encoder_outputs.last_hidden_state + w2 * context + w3 * persona
-            # encoder_outputs.last_hidden_state = w1 * context + w2 * persona
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0] * context + self.persona_context_w[1] * persona
-
-            # encoder_outputs.last_hidden_state = self.persona_context_norm(persona + context)
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0]*encoder_outputs.last_hidden_state + self.persona_context_w[1]*persona
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0] * persona + self.persona_context_w[1] * encoder_outputs.last_hidden_state
-            # encoder_outputs.last_hidden_state = self.persona_context_w[0] * persona + \
-            #                                     self.persona_context_w[1] * encoder_outputs.last_hidden_state + \
-            #                                     self.persona_context_w[2] * context
-            # print(self.persona_context_w)
 
         decoder_outputs = self.model.decoder(
             input_ids=decoder_input_ids,
@@ -370,24 +299,9 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
             return_dict=return_dict,
         )
         lm_logits = self.lm_head(decoder_outputs.last_hidden_state) + self.final_logits_bias
-        # my_outputs = self.model(
-        #     input_ids,
-        #     attention_mask=attention_mask,
-        #     decoder_input_ids=decoder_input_ids,
-        #     encoder_outputs=self.my_encoder_outputs,
-        #     past_key_values=self.my_past,
-        #     return_dict=return_dict,
-        # )
-        # my_logits = self.lm_head(my_outputs[0]) + self.final_logits_bias
-        # # alpha = 0.075
-        # alpha = 0
-        # lm_logits = (1+alpha)*lm_logits - alpha*my_logits
         self.predict_strategy(lm_logits, encoded_info)
         decoder_input_ids = torch.cat(
             [decoder_input_ids, encoded_info['pred_strat_id'][..., None] + len(self.toker) - 8], dim=-1)
-        # print(encoded_info)
-        # print(decoder_input_ids)
-        # print(self.toker.batch_decode(decoder_input_ids))
         assert 'max_length' in kwargs
         kwargs['max_length'] = kwargs['max_length'] + decoder_input_ids.size(1)
         kwargs['use_cache'] = True
@@ -402,7 +316,5 @@ class Model(BaseModel, BlenderbotSmallForConditionalGeneration):
             decoder_input_ids=decoder_input_ids,
             **kwargs
         )
-        # print(encoded_info)
         encoded_info['persona'] = persona_input_ids
-        # print(persona_input_ids)
         return encoded_info, generations[:, decoder_input_ids.size(1):]

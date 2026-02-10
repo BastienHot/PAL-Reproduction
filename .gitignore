@@ -26,17 +26,29 @@ codes/_reformat/train.txt
 codes/_reformat/valid.txt
 codes/_reformat/test.txt
 
-# Prepared/cached training data (created by prepare.py)
+# Prepared/cached training data and checkpoints (created by prepare.py / train.py)
 codes/DATA/
 
 # GloVe source text (at repo root, used to generate the .bin)
 glove.6B.300d.txt
 
+# GloVe word2vec conversion artifacts
+codes/metric/word2vec/glove.6B.300d.w2v.txt
+codes/metric/word2vec/glove.6B.300d.model.txt
+codes/metric/word2vec/glove.6B.300d.model.bin.vectors.npy
+
 # METEOR metric data
 codes/metric/pycocoevalcap/meteor/data/paraphrase-en.gz
 
 # SimCSE model (if downloaded locally)
+codes/simcse-bert-base-uncased/
 codes/princeton-nlp-sup-simcse-roberta-large/
+
+# Miniconda installer
+Miniconda3-latest-Linux-x86_64.sh
+
+# Report directory (author's internal reports, not part of reproduction)
+report/
 
 # OS / IDE
 .DS_Store

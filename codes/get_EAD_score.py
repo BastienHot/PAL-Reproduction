@@ -28,9 +28,9 @@ if __name__ == '__main__':
 
     with open(args.input_file) as f:
         data = json.load(f)
-    context = data
-    # context = [i['generation'] for i in data]
+    context = [i['generation'] for i in data]
     sentence = []
     for ctx in context:
         sentence.extend(sent_tokenize(str(ctx)))
-    print(cal_EAD(sentence, 1))
+    print("E-1:", cal_EAD(sentence, 1))
+    print("E-2:", cal_EAD(sentence, 2))

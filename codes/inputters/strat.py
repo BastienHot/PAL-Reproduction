@@ -91,7 +91,6 @@ def featurize(
             response = toker(response).input_ids
             labels = (strat_id + response + [eos])[:max_decoder_input_length + 1]
             decoder_input_ids = [bos] + labels[:-1]
-            # print(decoder_input_ids)
     else:
         # if encode_context is True, we need to encode context here
         if not encode_context:
@@ -181,7 +180,6 @@ def convert_data_to_inputs(data, toker: PreTrainedTokenizer, use_all_persona, en
                 strat_id = strat_id[0]
             else:
                 strat_id = '[' + dialog[i]['strategy'] + ']'
-        # print(kwargs['stage'])
         if i > 0 and dialog[i]['speaker'] == 'sys' and (kwargs['stage'] == 'training' or dialog[i - 1]['speaker'] != 'sys'):
             last_text = _norm(dialog[i - 1]['text'])
             if not use_all_persona:
@@ -208,10 +206,6 @@ def convert_data_to_inputs(data, toker: PreTrainedTokenizer, use_all_persona, en
             history_dialog = context.copy()
             if add_speaker:
                 history_dialog += ["System:"]
-            # print("his: ", history_dialog)
-            # print("res: ", text)
-            # print("strat: ", sys_strat)
-            # print("persona: ", persona)
             res = {
                 'last_text': last_text,
                 'context': history_dialog,
@@ -228,7 +222,6 @@ def convert_data_to_inputs(data, toker: PreTrainedTokenizer, use_all_persona, en
             else:
                 text = [strat_id] + text
         context = context + [text]
-        # print(context)
 
     return inputs
 
@@ -316,7 +309,6 @@ class FeatureDataset(Dataset):
             labels = None
 
         strat_id = torch.tensor([f.labels[0] for f in features], dtype=torch.long) - len(toker) + 8
-        # print(strat_id)
         res = {
             'input_ids': input_ids,
             'attention_mask': attention_mask,
@@ -419,8 +411,6 @@ def get_infer_batch(infer_input_file, toker, use_all_persona, encode_context, **
     posts = []
     references = []
     for sample_id, line in tqdm.tqdm(enumerate(reader), total=len(reader), desc=f"inferring"):
-        # print("in inputter, sample_id: {}".format(sample_id))
-        # print("in inputter, infer_batch_size: {}".format(infer_batch_size))
         data = json.loads(line)
         inputs = convert_data_to_inputs(data, toker, use_all_persona, encode_context, **kwargs)
         tmp_features = convert_inputs_to_features(inputs, toker, encode_context, **kwargs)
@@ -435,7 +425,6 @@ def get_infer_batch(infer_input_file, toker, use_all_persona, encode_context, **
             sample_ids.append(sample_id)
 
             if len(sample_ids) == infer_batch_size:
-                # print(sample_ids)
                 yield prepare_infer_batch(features, toker), posts, references, sample_ids
                 features = []
                 sample_ids = []

@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 def cut_seq_to_eos(sentence, eos, remove_id=None):
-    # print(sentence, eos)
     if remove_id is None:
         remove_id = [-1]
     sent = []
@@ -198,7 +197,6 @@ for infer_idx, infer_input_file in enumerate(args.infer_input_file):
     decode = lambda x: _norm(toker.decode(x))
     for batch, posts, references, sample_ids in infer_dataloader:
         batch = {k: v.to(device) if isinstance(v, Tensor) else v for k, v in batch.items()}
-        # print(batch)
         batch.update(generation_kwargs)
         encoded_info, generations = model.generate(**batch)
         
@@ -262,7 +260,6 @@ for infer_idx, infer_input_file in enumerate(args.infer_input_file):
                     g = generations[idx]
                 
                 if not args.only_generate and args.num_return_sequences == 1:
-                    # print(r)
                     ref, gen = [r], toker.decode(g) if not isinstance(g[0], list) else toker.decode(g[0])
                     metric.forword(ref, gen, chinese=args.chinese)
                 
@@ -271,13 +268,9 @@ for infer_idx, infer_input_file in enumerate(args.infer_input_file):
                 else:
                     g = decode(g)
                 tmp_persona = toker.decode(persona[idx], skip_special_tokens=True)
-                # print(tmp_persona)
                 tmp_res_to_append = {'sample_id': sample_ids[idx], 'post': p, 'response': r, 'generation': g, 'persona': tmp_persona}
-                #print('> context:   ', p)
-                #print('> generation:', g)
             else:
                 tmp_res_to_append = {'sample_id': sample_ids[idx], 'post': p, 'response': r}
-            #print(json.dumps(tmp_res_to_append, indent=4, ensure_ascii=False))
             
             other_res_to_append = {}
             if batch_other_res is not None:
@@ -286,7 +279,6 @@ for infer_idx, infer_input_file in enumerate(args.infer_input_file):
                         if k not in batch_other_res or v not in encoded_info: # TODO
                             continue # TODO
                         other_res_to_append[v] = encoded_info[v][idx]
-                        # print(v, encoded_info[v][idx])
                         if f'{v}_top1' in encoded_info:
                             other_res_to_append[f'{v}_top1'] = encoded_info[f'{v}_top1'][idx]
                         if f'{v}_top3' in encoded_info:
@@ -307,8 +299,6 @@ for infer_idx, infer_input_file in enumerate(args.infer_input_file):
                 ptr += 1
                 
             res.append(tmp_res_to_append)
-        
-        #raise EOFError
         
     if not args.only_encode and not args.only_generate:
         assert ptr == len(pointwise_loss)

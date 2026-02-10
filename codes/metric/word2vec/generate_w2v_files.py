@@ -26,4 +26,6 @@ def generate(path):
 
 
 if __name__ == "__main__":
-    generate('/home/zhengchujie/wordvector/english/glove6B')
+    import sys
+    path = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
+    generate(path)

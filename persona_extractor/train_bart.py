@@ -27,9 +27,6 @@ class LitModel(pl.LightningModule):
         self.learning_rate = learning_rate
         self.test_loss = []
         self.total_steps = total_steps
-        # self.freeze_encoder = freeze_encoder
-        # self.freeze_embeds_ = freeze_embeds
-        print(hparams)
 
         if hparams.freeze_encoder:
             freeze_params(self.model.get_encoder())
@@ -51,7 +48,6 @@ class LitModel(pl.LightningModule):
             "attention_mask": batch[1],
             "labels": batch[2],
         }
-        # print(batch['labels'][0])
         return self.model(**batch)
 
     def configure_optimizers(self):
@@ -62,15 +58,12 @@ class LitModel(pl.LightningModule):
         return [optimizer], [{"scheduler": scheduler}]
 
     def training_step(self, batch, batch_idx):
-
-        # print(batch)
         outputs = self.forward(batch)
         loss = outputs[0]
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # print(batch[0].size())
         outputs = self.forward(batch)
         loss = outputs[0]
 
@@ -94,7 +87,6 @@ class LitModel(pl.LightningModule):
     # Method that generates text using the BartForConditionalGeneration's generate() method
     def generate_text(self, text, eval_beams, early_stopping=True, max_len=128):
         ''' Function to generate text '''
-        # print(text)
         generated_ids = self.model.generate(
             text["input_ids"],
             attention_mask=text["attention_mask"],
@@ -200,7 +192,6 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
         "attention_mask": attention_masks,
         "labels": label_ids,
     }
-    # print(batch)
     return batch
 
 
@@ -251,28 +242,7 @@ def infer():
     batch_size = hparams.eval_batch_size
     res = []
     start = 0
-    context = []
-    context_number = []
-    dialog_id = []
-    tmp_context = df['context'].to_list()
-    now_id = 0
-    # ESC
-    # for i in tmp_context:
-    #     ctx_num = 3
-    #     for j in eval(i):
-    #         context.append(j)
-    #         dialog_id.append(now_id)
-    #         context_number.append(ctx_num)
-    #         ctx_num += 1
-    #     now_id += 1
-    context = tmp_context
-    print(len(context))
-    # ESC
-    # df = pd.DataFrame({
-    #     'context': context,
-    #     'dialog_id': dialog_id,
-    #     'ctx_num': context_number
-    # })
+    context = df['context'].to_list()
     step = len(context) // batch_size + 1 if len(context) % batch_size else len(context) // batch_size
     for i in trange(step):
         texts = tokenizer(
@@ -291,7 +261,7 @@ def infer():
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    os.environ.setdefault('CUDA_VISIBLE_DEVICES', '0')
     hparams = argparse.Namespace()
     hparams.num_workers = 16
     hparams.train_bath_size = 16

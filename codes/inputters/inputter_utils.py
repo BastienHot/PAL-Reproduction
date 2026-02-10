@@ -59,10 +59,6 @@ class BucketingDataLoader(object):
         assert 'config_name' in kwargs
         inputter_name = kwargs.pop('inputter_name')
         config_name = kwargs.pop('config_name')
-        print(f'./DATA/{inputter_name}.{config_name}_persona_attention_final_rebuttal/data.pkl')
-        # with open(f'./DATA/{inputter_name}.{config_name}_new_split_usr_sys/data.pkl', 'rb') as f:
-        # with open(f'./DATA/{inputter_name}.{config_name}_new_split/data.pkl', 'rb') as f:
-        # with open(f'./DATA/{inputter_name}.{config_name}_no_persona/data.pkl', 'rb') as f: 复现
         with open(f'./DATA/{inputter_name}.{config_name}_persona_attention_final_rebuttal/data.pkl', 'rb') as f:
             self.data = pickle.load(f)
         self.toker = toker

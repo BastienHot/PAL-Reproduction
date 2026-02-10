@@ -18,18 +18,14 @@ hparams = argparse.Namespace()
 hparams.num_workers = 16
 hparams.train_bath_size = 16
 hparams.eval_batch_size = 8
-# hparams.freeze_encoder = True
-# hparams.freeze_embeds = True
 hparams.freeze_encoder = False
 hparams.freeze_embeds = False
 hparams.eval_beams = 5
 hparams.warmup_steps = 100
-hparams.train_dir = '/home/chengjiale/emotion/Persona_extractor/data/both_original'
+hparams.train_dir = './data'
 hparams.max_train_epochs = 10
 hparams.lr = 1e-5
-# hparams.model_dir_or_name = "facebook/bart-base"
 hparams.model_dir_or_name = "facebook/bart-large-cnn"
-# hparams.model_dir_or_name = "facebook/bart-large"
 
 
 class LitModel(pl.LightningModule):
@@ -41,9 +37,6 @@ class LitModel(pl.LightningModule):
         self.learning_rate = learning_rate
         self.test_loss = []
         self.total_steps = total_steps
-        # self.freeze_encoder = freeze_encoder
-        # self.freeze_embeds_ = freeze_embeds
-        print(hparams)
 
         if hparams.freeze_encoder:
             freeze_params(self.model.get_encoder())
@@ -65,7 +58,6 @@ class LitModel(pl.LightningModule):
             "attention_mask": batch[1],
             "labels": batch[2],
         }
-        # print(batch['labels'][0])
         return self.model(**batch)
 
     def configure_optimizers(self):
@@ -76,15 +68,12 @@ class LitModel(pl.LightningModule):
         return [optimizer], [{"scheduler": scheduler}]
 
     def training_step(self, batch, batch_idx):
-
-        # print(batch)
         outputs = self.forward(batch)
         loss = outputs[0]
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        # print(batch[0].size())
         outputs = self.forward(batch)
         loss = outputs[0]
 
@@ -108,7 +97,6 @@ class LitModel(pl.LightningModule):
     # Method that generates text using the BartForConditionalGeneration's generate() method
     def generate_text(self, text, eval_beams, early_stopping=True, max_len=128):
         ''' Function to generate text '''
-        # print(text)
         generated_ids = self.model.generate(
             text["input_ids"],
             attention_mask=text["attention_mask"],
@@ -214,5 +202,4 @@ def encode_sentences(tokenizer, source_sentences, target_sentences, max_length=1
         "attention_mask": attention_masks,
         "labels": label_ids,
     }
-    # print(batch)
     return batch

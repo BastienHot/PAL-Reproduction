@@ -52,7 +52,6 @@ def eval_model_loss(model, eval_dataloader, epoch_id, infer, args):
             if infer:
                 pointwise_loss.extend(loss_sample.sum(dim=-1).cpu().tolist())
                 pointwise_sample.extend(n_sample.cpu().tolist())
-    #exit()
     tot_loss = np.sum(tot_loss)
     tot_sample = np.sum(tot_sample)
     mean_loss = tot_loss / tot_sample

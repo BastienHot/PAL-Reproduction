@@ -33,7 +33,7 @@ conda activate pal
 > conda create -n pal python=3.8.5
 > conda activate pal
 > pip install torch==1.7.0+cu101 torchvision==0.8.1+cu101 torchaudio==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
-> pip install transformers==4.9.2 tokenizers==0.10.3 pytorch-lightning==1.5.10 pandas gensim==3.8.3 nltk==3.5 scikit-learn==0.24.1 scipy==1.5.4 statsmodels==0.12.2 tqdm==4.54.0
+> pip install transformers==4.9.2 tokenizers==0.10.3 pytorch-lightning==1.5.10 pandas gensim==3.8.3 nltk==3.5 scikit-learn==0.24.1 scipy==1.5.4 statsmodels==0.12.2 tqdm==4.54.0 psutil
 > ```
 
 ### 2. Download NLTK data
@@ -69,10 +69,18 @@ If downloaded manually, update `hparams.model_dir_or_name` in
 
 **GloVe embeddings** (required for full evaluation):
 ```bash
+# Download and extract
 wget https://nlp.stanford.edu/data/glove.6B.zip -O glove.6B.zip
 unzip glove.6B.zip glove.6B.300d.txt
-python -m gensim.scripts.glove2word2vec --input=glove.6B.300d.txt --output=codes/metric/word2vec/glove.6B.300d.model.bin
-rm glove.6B.zip glove.6B.50d.txt glove.6B.100d.txt glove.6B.200d.txt
+cp glove.6B.300d.txt codes/metric/word2vec/
+
+# Convert to gensim binary format
+cd codes/metric/word2vec
+python generate_w2v_files.py
+cd ../../..
+
+# Clean up source files
+rm glove.6B.zip glove.6B.300d.txt
 ```
 
 See [DOWNLOADS.md](DOWNLOADS.md) for the complete list of external resources
@@ -106,30 +114,76 @@ bash RUN/train_strat.sh
 ```
 
 Checkpoints are saved under `codes/DATA/strat.strat_persona_attention_final_rebuttal/`.
+Training creates a timestamped directory (e.g., `2026-0210174049.1.5e-05.4.1gpu`).
 
 ### 6. Run inference
 
-Edit `codes/RUN/infer_strat.sh` to set the `CHECKPOINT` variable to your
-trained checkpoint path, then:
+The inference script auto-detects the latest training run directory and selects
+the best epoch (lowest validation loss from `eval_log.csv`):
 
 ```bash
-bash RUN/infer_strat.sh
+# From codes/ directory:
+bash RUN/infer_strat.sh                # auto-detect latest run + best epoch
+bash RUN/infer_strat.sh 4              # auto-detect latest run, use epoch 4
+bash RUN/infer_strat.sh 4 MY_RUN_DIR   # use specific run dir + epoch
 ```
 
-This produces `gen.json` and `gen.txt` with generated responses and automatic
-metrics (BLEU, ROUGE-L, Distinct, etc.).
+This produces `gen.json` and `gen.txt` under a `res_...` subdirectory of your
+run directory, with generated responses and automatic metrics (BLEU, ROUGE-L,
+Distinct, etc.).
 
 ### 7. Additional evaluation
 
-**EAD score:**
+**EAD score** (Expectancy-Adjusted Distinct):
 ```bash
-python get_EAD_score.py --input_file <path_to_gen.json>
+# Find gen.json in the res_... subdirectory created by inference
+python get_EAD_score.py --input_file ./DATA/strat.strat_persona_attention_final_rebuttal/<run_dir>/res_.../gen.json
 ```
 
-**Cosine similarity (persona-response alignment):**
+**Cosine similarity** (persona-response alignment via SimCSE):
 ```bash
-bash RUN/get_gen_sim_cos.sh  # edit INPUT_FILE variable first
+bash RUN/get_gen_sim_cos.sh            # auto-detects the latest gen.json
+bash RUN/get_gen_sim_cos.sh path/to/gen.json   # or specify explicitly
 ```
+
+The SimCSE model (`princeton-nlp/sup-simcse-bert-base-uncased`) is downloaded
+automatically from HuggingFace. If auto-download fails with
+`transformers==4.9.2`, download the model manually and pass the local path:
+```bash
+python get_cos_similarity.py \
+    --input_file <path_to_gen.json> \
+    --simcse_model ./simcse-bert-base-uncased
+```
+
+---
+
+## Reproduction Results
+
+Results from our reproduction (single GPU, seed=13, lr=1.5e-5, warmup=0, epoch 4)
+compared to the paper (Table 3):
+
+| Metric | Paper (PAL) | Reproduction | Notes |
+|--------|------------|--------------|-------|
+| ACC    | 34.51      | 32.98        | Strategy classification accuracy |
+| PPL    | 15.92      | 15.55        | Perplexity (lower is better) |
+| B-2    | 8.75       | 8.63         | BLEU-2 |
+| B-4    | 2.66       | 2.59         | BLEU-4 |
+| D-1    | 5.00       | 3.72         | Distinct-1 |
+| D-2    | 30.27      | 19.84        | Distinct-2 |
+| E-1    | 6.73       | 4.78         | EAD-1 |
+| E-2    | 41.82      | 26.63        | EAD-2 |
+| R-L    | 18.06      | 17.73        | ROUGE-L |
+| Cos-Sim| 0.244      | 0.235        | SimCSE cosine similarity |
+
+**Analysis**: Most metrics are close to paper values. The main gap is in
+diversity metrics (D-1, D-2, E-1, E-2), which are consistently lower. This may
+be due to differences in training environment (the paper used multi-GPU
+training) or unreported settings. PPL is actually slightly better than the paper.
+
+**Hyperparameter note**: The paper reports lr=2.5e-5 and warmup=100, but the
+code defaults to lr=1.5e-5 and warmup=0. We tested both configurations and
+found the code defaults produce better overall results. See
+[CHANGES.md](CHANGES.md) for details.
 
 ---
 
@@ -196,22 +250,6 @@ extractor for interactive mode.
    python train_bart.py
    ```
    Checkpoints are saved under `persona_extractor/pl_root/`.
-
----
-
-## Reproducing Paper Results (Table 3)
-
-The paper reports these automatic metrics for PAL:
-
-| Model | ACC | PPL | B-2 | B-4 | D-1 | D-2 | E-1 | E-2 | R-L | Cos-Sim |
-|-------|-----|-----|-----|-----|-----|-----|-----|-----|-----|---------|
-| Blenderbot-Joint | 27.72 | 18.11 | 5.57 | 1.93 | 3.74 | 20.66 | 4.23 | 20.28 | 16.36 | 0.184 |
-| PAL (α=0) | 34.25 | 15.92 | 9.28 | 2.90 | 4.72 | 25.56 | 5.87 | 33.05 | 18.27 | 0.229 |
-| PAL | 34.51 | 15.92 | 8.75 | 2.66 | 5.00 | 30.27 | 6.73 | 41.82 | 18.06 | 0.244 |
-
-**Known discrepancies** (see [CHANGES.md](CHANGES.md)):
-- Paper reports lr=2.5e-5 and warmup=100; code uses lr=1.5e-5 and warmup=0
-- Checkpoint selection: authors suggest trying later epochs, not just lowest-loss
 
 ---
 

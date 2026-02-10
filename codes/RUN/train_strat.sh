@@ -3,10 +3,10 @@
 # Original: PAL/codes/RUN/train_strat.sh
 # Changes: replaced hardcoded absolute path with relative path
 #
-# NOTE: Paper reports lr=2.5e-5 and warmup_steps=100,
-#       but original code uses lr=1.5e-5 and warmup_steps=0.
-#       This is an unresolved discrepancy (see GitHub issue #11).
-#       We keep the code values here for faithful reproduction.
+# NOTE: Paper (Section 4.3) reports lr=2.5e-5 and warmup_steps=100,
+#       but the code default is lr=1.5e-5 and warmup_steps=0.
+#       We use the code values because they gave better results in our
+#       reproduction experiments (see CHANGES.md and GitHub issue #11).
 
 CUDA_VISIBLE_DEVICES=0 python train.py \
     --config_name strat \

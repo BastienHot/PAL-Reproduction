@@ -58,8 +58,14 @@ for automatic downloads. Most model weights should be downloaded manually.
 - **What**: Sentence embedding model for computing response-persona similarity
 - **Source**: https://huggingface.co/princeton-nlp/sup-simcse-bert-base-uncased
 - **Used by**: `codes/get_cos_similarity.py`
-- **Note**: Only needed for the cos-sim evaluation metric, not for training or inference.
-  Auto-download should work.
+- **Note**: Only needed for the cos-sim evaluation metric, not for training or
+  inference. Auto-download is the default behavior (via `--simcse_model` argument).
+  If auto-download fails with `transformers==4.9.2`, download the model manually:
+  ```bash
+  cd codes
+  git clone https://huggingface.co/princeton-nlp/sup-simcse-bert-base-uncased simcse-bert-base-uncased
+  ```
+  Then pass `--simcse_model ./simcse-bert-base-uncased` to `get_cos_similarity.py`.
 
 ---
 
@@ -109,17 +115,23 @@ for automatic downloads. Most model weights should be downloaded manually.
 - **Where to place**: `codes/metric/word2vec/`
 - **Source**: https://nlp.stanford.edu/projects/glove/
   (Download `glove.6B.zip`, extract `glove.6B.300d.txt`)
-- **Conversion** (see PAL GitHub issue #4):
+- **Conversion** (converts GloVe text → word2vec text → gensim binary):
   ```bash
-  # Convert to word2vec format for gensim
-  python -m gensim.scripts.glove2word2vec \
-      --input=glove.6B.300d.txt \
-      --output=codes/metric/word2vec/glove.6B.300d.model.bin
+  # 1. Download and extract the GloVe vectors
+  wget https://nlp.stanford.edu/data/glove.6B.zip -O glove.6B.zip
+  unzip glove.6B.zip glove.6B.300d.txt
+
+  # 2. Copy to the word2vec directory and run the conversion script
+  cp glove.6B.300d.txt codes/metric/word2vec/
+  cd codes/metric/word2vec
+  python generate_w2v_files.py
+  cd ../../..
+
+  # 3. Clean up source files (the .bin is all that's needed at runtime)
+  rm glove.6B.zip glove.6B.300d.txt
   ```
-  Note: You may need to update the loading code in `metric/metric_utils.py` to use:
-  ```python
-  KeyedVectors.load_word2vec_format('glove.6B.300d.model.bin', binary=False, encoding='utf8')
-  ```
+  This produces `glove.6B.300d.model.bin` (and associated files) which are
+  loaded by `evaluate.py` at inference time.
 
 ### NLTK data (required for tokenization)
 - **What**: NLTK punkt tokenizer
@@ -128,6 +140,12 @@ for automatic downloads. Most model weights should be downloaded manually.
   import nltk
   nltk.download('punkt')
   ```
+
+### METEOR paraphrase data (required for METEOR metric)
+- **What**: English paraphrase table for METEOR
+- **Where to place**: `codes/metric/pycocoevalcap/meteor/data/paraphrase-en.gz`
+- **Note**: This file should be auto-downloaded by the METEOR code on first run.
+  If not, download it manually from the METEOR project.
 
 ---
 

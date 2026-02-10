@@ -85,8 +85,6 @@ else:
     with mp.Pool(processes=mp.cpu_count()) as pool:
         for features in pool.imap(process_data, tqdm.tqdm(reader, total=len(reader))):
             processed_data.extend(features)
-# print(processed_data[0].labels)
-
 
 # save data
 data_path = f'{save_dir}/data.pkl'
