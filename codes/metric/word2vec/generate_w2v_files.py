@@ -8,7 +8,7 @@ except ImportError:
     from gensim.models import Word2Vec as KeyedVectors
 
 import six
-from metric.word2vec.glove2word2vec import glove2word2vec
+from glove2word2vec import glove2word2vec
 
 
 def txt2bin(filename):
