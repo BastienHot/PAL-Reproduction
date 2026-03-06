@@ -59,11 +59,13 @@ for automatic downloads. Most model weights should be downloaded manually.
 - **Source**: https://huggingface.co/princeton-nlp/sup-simcse-bert-base-uncased
 - **Used by**: `codes/get_cos_similarity.py`
 - **Note**: Only needed for the cos-sim evaluation metric, not for training or
-  inference. Auto-download is the default behavior (via `--simcse_model` argument).
-  If auto-download fails with `transformers==4.9.2`, download the model manually:
+  inference. Auto-download does **not** work with `transformers==4.9.2`.
+  Download the model manually (requires `git-lfs`):
   ```bash
+  sudo apt install git-lfs   # if not already installed
   cd codes
   git clone https://huggingface.co/princeton-nlp/sup-simcse-bert-base-uncased simcse-bert-base-uncased
+  cd simcse-bert-base-uncased && git lfs pull && cd ..
   ```
   Then pass `--simcse_model ./simcse-bert-base-uncased` to `get_cos_similarity.py`.
 
@@ -141,11 +143,25 @@ for automatic downloads. Most model weights should be downloaded manually.
   nltk.download('punkt')
   ```
 
+### Java 11 (required for METEOR metric)
+- **What**: Java runtime for the METEOR JAR
+- **Note**: Java 11 is recommended. Newer versions may not work with `meteor-1.5.jar`.
+  ```bash
+  sudo apt install openjdk-11-jre -y
+  ```
+
 ### METEOR paraphrase data (required for METEOR metric)
-- **What**: English paraphrase table for METEOR
-- **Where to place**: `codes/metric/pycocoevalcap/meteor/data/paraphrase-en.gz`
-- **Note**: This file should be auto-downloaded by the METEOR code on first run.
-  If not, download it manually from the METEOR project.
+- **What**: English paraphrase table and data files for METEOR
+- **Where to place**: `codes/metric/pycocoevalcap/meteor/data/`
+- **Note**: These files are **not** auto-downloaded and must be extracted from the
+  METEOR 1.5 release:
+  ```bash
+  cd /tmp
+  wget https://github.com/cmu-mtlab/meteor/releases/download/v1.5/meteor-1.5.tar.gz
+  tar xzf meteor-1.5.tar.gz
+  cp -r meteor-1.5/data codes/metric/pycocoevalcap/meteor/
+  rm -rf meteor-1.5 meteor-1.5.tar.gz
+  ```
 
 ---
 
@@ -166,7 +182,9 @@ If you want to skip training the persona extractor from scratch:
 | BlenderBot-small-90M weights | PAL model training/inference | ~360 MB | Critical |
 | BART-large-CNN | Persona extractor training | ~1.6 GB | Critical |
 | PersonaChat dataset | Persona extractor training | ~20 MB | Critical (if re-training extractor) |
+| Java 11 | METEOR evaluation | ~177 MB | Needed for full evaluation |
 | GloVe 6B 300d | Evaluation metrics | ~1 GB (zip) | Needed for full evaluation |
-| SimCSE model | Cos-sim evaluation | ~440 MB | Needed for cos-sim metric |
+| METEOR data files | METEOR evaluation | ~5 MB | Needed for full evaluation |
+| SimCSE model (+ git-lfs) | Cos-sim evaluation | ~440 MB | Needed for cos-sim metric |
 | NLTK punkt | Tokenization | ~2 MB | Critical |
 | BART-base tokenizer | PersonaChat preprocessing | ~2 MB (cached) | Needed if re-training extractor |
