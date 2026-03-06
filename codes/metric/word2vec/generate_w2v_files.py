@@ -1,0 +1,30 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT license. See LICENSE.md file in the project root for full license information.
+import os
+
+try:
+    from gensim.models import KeyedVectors
+except ImportError:
+    from gensim.models import Word2Vec as KeyedVectors
+
+import six
+from glove2word2vec import glove2word2vec
+
+
+def txt2bin(output_model_file):
+    from gensim.models import KeyedVectors
+    m = KeyedVectors.load_word2vec_format(output_model_file, binary=False)
+    m.save(output_model_file.replace('.txt', '.bin'))
+
+
+def generate(path):
+    glove_vector_file = os.path.join(path, 'glove.6B.300d.txt')
+    output_model_file = os.path.join(path, 'glove.6B.300d.model.txt')
+    glove2word2vec(glove_vector_file, output_model_file)
+    txt2bin(output_model_file)
+
+
+if __name__ == "__main__":
+    import sys
+    path = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
+    generate(path)
