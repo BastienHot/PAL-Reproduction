@@ -36,13 +36,23 @@ conda activate pal
 > pip install transformers==4.9.2 tokenizers==0.10.3 pytorch-lightning==1.5.10 pandas gensim==3.8.3 nltk==3.5 scikit-learn==0.24.1 scipy==1.5.4 statsmodels==0.12.2 tqdm==4.54.0 psutil
 > ```
 
-### 2. Download NLTK data
+### 2. Install Java 11 (required for METEOR evaluation)
+
+The METEOR metric requires Java. Java 11 is recommended (newer versions may not
+work with `meteor-1.5.jar`):
+
+```bash
+sudo apt install openjdk-11-jre -y
+java -version   # verify installation
+```
+
+### 3. Download NLTK data
 
 ```bash
 python -c "import nltk; nltk.download('punkt')"
 ```
 
-### 3. Download model weights
+### 4. Download model weights
 
 **BlenderBot-small-90M** (required — PAL base model):
 ```bash
@@ -83,10 +93,20 @@ cd ../../..
 rm glove.6B.zip glove.6B.300d.txt
 ```
 
+**METEOR paraphrase data** (required for METEOR evaluation):
+```bash
+cd /tmp
+wget https://github.com/cmu-mtlab/meteor/releases/download/v1.5/meteor-1.5.tar.gz
+tar xzf meteor-1.5.tar.gz
+cp -r meteor-1.5/data codes/metric/pycocoevalcap/meteor/
+rm -rf meteor-1.5 meteor-1.5.tar.gz
+cd -
+```
+
 See [DOWNLOADS.md](DOWNLOADS.md) for the complete list of external resources
 including optional ones (SimCSE, PersonaChat dataset).
 
-### 4. Prepare data
+### 5. Prepare data
 
 The persona-augmented dataset (PESConv.json) is already included. To generate
 the train/valid/test splits:
@@ -106,7 +126,7 @@ Then prepare the tokenized features:
 bash RUN/prepare_strat.sh
 ```
 
-### 5. Train the PAL model
+### 6. Train the PAL model
 
 ```bash
 # From codes/ directory:
@@ -116,7 +136,7 @@ bash RUN/train_strat.sh
 Checkpoints are saved under `codes/DATA/strat.strat_persona_attention_final_rebuttal/`.
 Training creates a timestamped directory (e.g., `2026-0210174049.1.5e-05.4.1gpu`).
 
-### 6. Run inference
+### 7. Run inference
 
 The inference script auto-detects the latest training run directory and selects
 the best epoch (lowest validation loss from `eval_log.csv`):
@@ -132,26 +152,30 @@ This produces `gen.json` and `gen.txt` under a `res_...` subdirectory of your
 run directory, with generated responses and automatic metrics (BLEU, ROUGE-L,
 Distinct, etc.).
 
-### 7. Additional evaluation
+### 8. Additional evaluation
+
+These scripts must be run from the `codes/` directory:
 
 **EAD score** (Expectancy-Adjusted Distinct):
 ```bash
 # Find gen.json in the res_... subdirectory created by inference
-python get_EAD_score.py --input_file ./DATA/strat.strat_persona_attention_final_rebuttal/<run_dir>/res_.../gen.json
+python get_EAD_score.py --input_file ./DATA/strat.strat_persona_attention_final_rebuttal/<run_dir>/<res_dir>/gen.json
 ```
 
 **Cosine similarity** (persona-response alignment via SimCSE):
+
+The SimCSE model must be downloaded locally first (`transformers==4.9.2` cannot
+auto-download it from HuggingFace). Requires `git-lfs`:
 ```bash
-bash RUN/get_gen_sim_cos.sh            # auto-detects the latest gen.json
-bash RUN/get_gen_sim_cos.sh path/to/gen.json   # or specify explicitly
+sudo apt install git-lfs   # if not already installed
+git clone https://huggingface.co/princeton-nlp/sup-simcse-bert-base-uncased simcse-bert-base-uncased
+cd simcse-bert-base-uncased && git lfs pull && cd ..
 ```
 
-The SimCSE model (`princeton-nlp/sup-simcse-bert-base-uncased`) is downloaded
-automatically from HuggingFace. If auto-download fails with
-`transformers==4.9.2`, download the model manually and pass the local path:
+Then run:
 ```bash
 python get_cos_similarity.py \
-    --input_file <path_to_gen.json> \
+    --input_file ./DATA/strat.strat_persona_attention_final_rebuttal/<run_dir>/<res_dir>/gen.json \
     --simcse_model ./simcse-bert-base-uncased
 ```
 
